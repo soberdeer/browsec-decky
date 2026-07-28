@@ -1,0 +1,235 @@
+Browsec Decky Freeware License 1.0
+
+Copyright (c) 2026 soberdeer
+All rights reserved.
+
+This software is source-available freeware. It is not open-source software.
+
+1. Definitions
+
+"Software" means the Browsec Decky plugin, helper code, configuration files,
+documentation, source code, and official release artifacts authored and
+published by the Licensor, excluding the Third-Party Materials described in
+Section 6.
+
+"Licensor" means the copyright holder identified above.
+
+"Official Release" means an unmodified release of the Software published by
+the Licensor through the official Browsec Decky repository or another
+distribution channel expressly designated by the Licensor.
+
+"You" means the individual or legal entity exercising rights under this
+License.
+
+"Commercial Use" means any use primarily intended for or directed toward
+commercial advantage, monetary compensation, paid services, resale, rental,
+licensing revenue, advertising revenue, or other financial benefit.
+
+2. Limited Permission to Use
+
+Subject to your compliance with this License, the Licensor grants you a
+limited, worldwide, royalty-free, non-exclusive, non-transferable, and
+non-sublicensable permission to:
+
+a. download an Official Release;
+
+b. install and run an unmodified Official Release on devices that you own or
+   control, solely for personal and non-commercial purposes;
+
+c. make one reasonable backup copy of an Official Release for your own use;
+   and
+
+d. view and inspect the source code solely for personal evaluation, learning,
+   security review, and auditing.
+
+No other rights are granted.
+
+3. Restrictions
+
+Unless you have received separate prior written permission from the Licensor,
+you may not:
+
+a. modify, adapt, translate, patch, recompile, rebuild, or otherwise alter the
+   Software or its source code;
+
+b. create or distribute derivative works based on any part of the Software;
+
+c. use the source code, in whole or in part, in another program, plugin,
+   service, or project;
+
+d. distribute, republish, mirror, upload, transmit, sublicense, sell, rent,
+   lease, lend, or otherwise make copies of the Software available to any
+   third party, whether modified or unmodified;
+
+e. use the Software for any Commercial Use;
+
+f. provide the Software or its functionality as part of a paid product,
+   subscription, managed service, hosted service, or commercial support
+   offering;
+
+g. remove, conceal, or alter any copyright, license, attribution, trademark,
+   or other proprietary notice contained in the Software; or
+
+h. represent that a modified or third-party build is an Official Release.
+
+You may share a link to the official Browsec Decky repository or to an
+Official Release page.
+
+The restrictions in this Section apply only to the extent permitted by
+applicable law. This License does not restrict any right that cannot lawfully
+be restricted by contract or copyright.
+
+4. Source Repository and Hosting Platforms
+
+Making the source code publicly accessible does not grant permission to use,
+modify, or distribute it except as expressly stated in Section 2.
+
+Any technical ability provided by a repository hosting platform to view,
+cache, or fork the repository does not grant additional rights under this
+License. Rights necessarily granted to the hosting platform are governed by
+the applicable agreement between the Licensor and that platform. Copies made
+through platform functionality remain subject to this License.
+
+5. Ownership
+
+The Software is licensed, not sold. The Licensor retains all copyright and
+other intellectual-property rights in the Software that are not expressly
+granted by this License.
+
+No permission is granted to use the Licensor's names, marks, branding, or
+logos except as necessary to identify an unmodified Official Release.
+
+6. Browsec and Other Third-Party Materials
+
+The Software may include, download, install, interact with, or display
+software, trademarks, logos, graphics, libraries, and other materials owned by
+Browsec Inc or other third parties ("Third-Party Materials").
+
+Browsec software, services, trademarks, logos, and related assets remain the
+property of Browsec Inc or their respective rights holders. They are included
+and distributed with permission from Browsec Inc and are not licensed under
+this License. Your use of Browsec software and services is subject to
+Browsec's applicable terms and policies.
+
+Other Third-Party Materials are governed by their respective licenses and
+notices. If a third-party license grants you rights that conflict with a
+restriction in this License, that third-party license controls only for the
+applicable Third-Party Materials.
+
+Nothing in this License grants access to a Browsec account, subscription,
+Premium entitlement, authentication credential, access token, server
+credential, or any other service entitlement. Each user must obtain and use
+their own valid account and authorization.
+
+Permission to distribute Browsec materials does not, by itself, imply that
+Browsec Inc sponsors, supports, certifies, or endorses the Software unless
+Browsec Inc expressly states otherwise.
+
+7. Updates, Support, and Service Availability
+
+The Licensor has no obligation to provide maintenance, updates, support,
+compatibility fixes, or continued availability of the Software.
+
+The Software depends on third-party software, operating-system functionality,
+and online services that may change, become unavailable, or stop working at
+any time.
+
+8. Disclaimer of Warranty
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE SOFTWARE IS PROVIDED
+"AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY OF ANY KIND, WHETHER EXPRESS,
+IMPLIED, OR STATUTORY, INCLUDING, WITHOUT LIMITATION, WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT,
+SECURITY, RELIABILITY, AVAILABILITY, OR ERROR-FREE OPERATION.
+
+YOU USE THE SOFTWARE AT YOUR OWN RISK. THE LICENSOR DOES NOT WARRANT THAT THE
+SOFTWARE WILL PROTECT YOUR PRIVACY, PREVENT NETWORK OR DNS LEAKS, REMAIN
+COMPATIBLE WITH STEAMOS, DECKY LOADER, OR BROWSEC, OR OPERATE WITHOUT
+INTERRUPTION, DATA LOSS, CONFIGURATION CHANGES, OR SECURITY ISSUES.
+
+9. Limitation of Liability
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT WILL THE
+LICENSOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+PUNITIVE, OR CONSEQUENTIAL DAMAGES, OR FOR ANY LOSS OF DATA, PRIVACY,
+CONNECTIVITY, PROFITS, REVENUE, BUSINESS, OR GOODWILL, ARISING FROM OR RELATED
+TO THE SOFTWARE OR THIS LICENSE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+DAMAGE.
+
+IF LIABILITY CANNOT BE COMPLETELY EXCLUDED, THE LICENSOR'S TOTAL AGGREGATE
+LIABILITY ARISING FROM OR RELATED TO THE SOFTWARE OR THIS LICENSE WILL NOT
+EXCEED THE AMOUNT YOU PAID TO THE LICENSOR FOR THE SOFTWARE DURING THE TWELVE
+MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM. BECAUSE THE SOFTWARE IS
+PROVIDED FREE OF CHARGE, THAT AMOUNT WILL NORMALLY BE ZERO.
+
+Some jurisdictions do not allow certain warranty exclusions or limitations
+of liability. In those jurisdictions, these provisions apply only to the
+maximum extent permitted by law.
+
+10. Termination
+
+This License automatically terminates if you violate any of its terms. Upon
+termination, you must stop using the Software and delete all copies in your
+possession or control, except for copies that applicable law independently
+permits you to retain.
+
+Sections 5, 6, 8, 9, 10, and 11 survive termination.
+
+11. General Terms
+
+This License is the entire agreement between you and the Licensor concerning
+the rights granted here, except for any separate written agreement signed or
+otherwise expressly approved in writing by the Licensor.
+
+If any provision of this License is held unenforceable, it will be enforced to
+the maximum extent permitted, and the remaining provisions will remain in
+effect.
+
+Failure to enforce any provision is not a waiver of the right to enforce it
+later.
+
+Headings are for convenience only and do not affect interpretation.
+
+12. Additional Permission
+
+For permission to modify, redistribute, integrate, or commercially use the
+Software, contact the Licensor through:
+
+https://github.com/soberdeer/browsec-decky
+
+Any additional permission must be granted in writing.
+
+
+Decky Plugin Template License
+=============================
+
+BSD 3-Clause License
+
+Copyright (c) 2023, SteamDeckHomebrew
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from this
+   software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.

@@ -1,0 +1,2 @@
+"""Browsec Decky backend package."""
+

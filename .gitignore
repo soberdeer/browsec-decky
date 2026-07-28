@@ -1,0 +1,18 @@
+node_modules/
+.pnpm-store/
+dist/
+out/
+*.zip
+*.log
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.vscode/settings.json
+.idea/
+
+# Imported from the verified official Browsec Desktop package during builds.
+bin/browbox
+bin/browray
+
