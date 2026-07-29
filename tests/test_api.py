@@ -97,8 +97,9 @@ class NetworkErrorTests(unittest.TestCase):
             api_urls=("https://d5.example/api/",),
             opener=opener,
         )
-        with self.assertRaises(BrowsecAPIError):
+        with self.assertRaises(BrowsecAPIError) as raised:
             api.login("deck@example.com", "password")
+        self.assertEqual(raised.exception.status_code, 401)
         self.assertEqual(opener.request.get_header("User-agent"), "axios/1.16.1")
         self.assertEqual(
             opener.request.get_header("Accept"),

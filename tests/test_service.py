@@ -7,11 +7,68 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "py_modules"))
 
-from browsec_decky.api import VPNServer
+from browsec_decky.api import BrowsecAPIError, VPNServer
 from browsec_decky.service import BrowsecService
 
 
 class PublicStateTests(unittest.TestCase):
+    def test_expired_startup_session_is_cleared_once(self):
+        async def emit_state(_state):
+            return None
+
+        class ExpiredAPI:
+            def get_account(self, _token):
+                raise BrowsecAPIError(
+                    "Browsec API HTTP 401: rejected",
+                    status_code=401,
+                )
+
+        class Runtime:
+            public_ip = None
+            kill_switch_active = False
+            kill_switch_available = True
+
+            async def reset_stale_kill_switch(self):
+                return None
+
+            def runtime_status(self):
+                return True, None
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            settings_path = root / "settings.json"
+            settings_path.write_text(
+                (
+                    '{"access_token":"expired-token-value",'
+                    '"email":"deck@example.com",'
+                    '"kill_switch_enabled":false,'
+                    '"selected_country":"nl",'
+                    '"xray_uuid":"cf9b437a-b26d-416a-9400-51e76ec8b0ca"}'
+                ),
+                encoding="utf-8",
+            )
+            service = BrowsecService(
+                plugin_dir=root,
+                settings_path=settings_path,
+                runtime_dir=root / "runtime",
+                emit_state=emit_state,
+                api=ExpiredAPI(),
+            )
+            service.runtime = Runtime()
+
+            asyncio.run(service.initialize())
+
+            state = service.public_state()
+            self.assertFalse(state["loggedIn"])
+            self.assertFalse(state["killSwitchEnabled"])
+            self.assertEqual(
+                state["error"],
+                "Your Browsec session expired. Sign in again.",
+            )
+            saved = settings_path.read_text(encoding="utf-8")
+            self.assertNotIn("expired-token-value", saved)
+            self.assertNotIn("xray_uuid", saved)
+
     def test_backend_state_never_exposes_credentials(self):
         async def emit_state(_state):
             return None

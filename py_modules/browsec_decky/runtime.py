@@ -372,7 +372,7 @@ class TunnelRuntime:
                     headers={
                         "Accept": "text/plain",
                         "Cache-Control": "no-cache",
-                        "User-Agent": "Browsec-Decky/0.1.8",
+                        "User-Agent": "Browsec-Decky/0.1.9",
                     },
                 )
                 with opener.open(request, timeout=6) as response:

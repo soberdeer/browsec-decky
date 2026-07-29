@@ -82,6 +82,15 @@ COUNTRY_NAMES = {
 class BrowsecAPIError(RuntimeError):
     """An expected Browsec API or network error safe to display to the user."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
 
 @dataclass(frozen=True)
 class VPNServer:
@@ -217,7 +226,8 @@ class BrowsecAPI:
                     payload = {}
                 if exc.code < 500:
                     raise BrowsecAPIError(
-                        _http_error_message(exc.code, payload, raw)
+                        _http_error_message(exc.code, payload, raw),
+                        status_code=exc.code,
                     ) from exc
                 last_error = exc
                 failures.append(f"{host}: {type(exc).__name__}: {exc}")
@@ -282,7 +292,7 @@ class BrowsecAPI:
             try:
                 request = urllib.request.Request(
                     url,
-                    headers={"Accept": "application/json", "User-Agent": "Browsec-Decky/0.1.8"},
+                    headers={"Accept": "application/json", "User-Agent": "Browsec-Decky/0.1.9"},
                 )
                 with urllib.request.urlopen(request, timeout=4) as response:
                     payload = _safe_json(response.read())

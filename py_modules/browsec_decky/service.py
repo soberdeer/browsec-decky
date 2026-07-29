@@ -71,6 +71,16 @@ class BrowsecService:
         }
         self.storage.save(allowed)
 
+    def _clear_expired_session(self) -> None:
+        kill_switch_enabled = bool(
+            self.settings.get("kill_switch_enabled", True)
+        )
+        self.settings = {
+            "kill_switch_enabled": kill_switch_enabled,
+        }
+        self.servers = {}
+        self._save_settings()
+
     @property
     def logged_in(self) -> bool:
         return all(
@@ -129,7 +139,11 @@ class BrowsecService:
             async with self.lock:
                 await self._refresh_locked()
         except BrowsecAPIError as exc:
-            self.error = str(exc)
+            if exc.status_code in (401, 403):
+                self._clear_expired_session()
+                self.error = "Your Browsec session expired. Sign in again."
+            else:
+                self.error = str(exc)
         await self._emit()
 
     async def get_state(self) -> dict[str, Any]:
