@@ -15,4 +15,4 @@ __pycache__/
 # Imported from the verified official Browsec Desktop package during builds.
 bin/browbox
 bin/browray
-
+backend/out/

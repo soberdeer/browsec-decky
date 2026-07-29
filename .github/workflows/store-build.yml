@@ -1,0 +1,52 @@
+name: Verify Decky Store build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Download verified Decky CLI
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output /tmp/decky \
+            https://github.com/SteamDeckHomebrew/cli/releases/download/0.0.7/decky-linux-x86_64
+          printf '%s  %s\n' \
+            '0d0f8c127cd3dba12b75f771c786194ca9f4f771b4787ae24de8b1af45af4294' \
+            '/tmp/decky' \
+            | sha256sum --check -
+          chmod 0755 /tmp/decky
+
+      - name: Build with the Decky Plugin Database toolchain
+        run: sudo /tmp/decky plugin build -b -o /tmp/decky-output -s directory .
+
+      - name: Verify Store artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          artifact='/tmp/decky-output/browsec-decky.zip'
+          test -f "$artifact"
+          unzip -t "$artifact"
+          test "$(unzip -Z1 "$artifact" | grep -Ec '/bin/browbox$')" -eq 1
+          test "$(unzip -Z1 "$artifact" | grep -Ec '/bin/browray$')" -eq 1
+          test "$(unzip -p "$artifact" '*/bin/browbox' | sha256sum | awk '{print $1}')" \
+            = '68aeab83cc4ab2659a5b92232261a20746ccdafc3b3d1e19b2d63247eec3bbf7'
+          test "$(unzip -p "$artifact" '*/bin/browray' | sha256sum | awk '{print $1}')" \
+            = 'b2c525e082cf2fef460499c88838d355f0b9bfb5a00bdb3eaa99b6af63825006'
+          unzip -p "$artifact" '*/LICENSE' | grep -Fq \
+            'Decky Plugin Store Distribution Permission'

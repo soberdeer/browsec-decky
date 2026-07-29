@@ -32,6 +32,20 @@ are intentionally excluded from Git.
 
 The installable ZIP and SHA-256 file are created in `out/`.
 
+## Decky Plugin Store build
+
+The repository follows the Decky CLI custom-backend contract. During a Store
+build, `backend/src/import-runtime.sh` downloads the pinned official Browsec
+Desktop Debian package, verifies the package and extracted executable hashes,
+and writes only `browbox` and `browray` to `backend/out`. Decky CLI then places
+those files in the final plugin's `bin/` directory.
+
+To reproduce the Store build, use Decky CLI 0.0.7:
+
+```sh
+decky plugin build -b -o out -s directory .
+```
+
 ## Install for testing
 
 Enable developer mode in Decky Loader, choose **Install Plugin from ZIP**, and
@@ -44,4 +58,6 @@ Do not run Browsec Desktop and Browsec Decky simultaneously.
 
 Project-authored code is source-available freeware under
 [LICENSE](LICENSE). Third-party components and Browsec materials are covered
-by [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) and their respective terms.
+by the notices in that license, the repository's
+[THIRD_PARTY_NOTICES](https://github.com/soberdeer/browsec-decky/blob/main/THIRD_PARTY_NOTICES),
+and their respective terms.

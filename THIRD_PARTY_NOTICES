@@ -7,8 +7,9 @@ Browsec runtime and branding
 Official Browsec Desktop runtime files (browbox and browray), the Browsec
 service, and Browsec branding are owned by Browsec Inc or their respective
 rights holders. They are not licensed under the Browsec Decky Freeware
-License. The release build extracts the runtime only from the official
-Browsec Desktop 1.2.2 Debian package after exact SHA-256 verification.
+License. Release and Decky Plugin Store builds extract the runtime only from
+the official Browsec Desktop 1.2.2 Debian package after exact SHA-256
+verification of the package and both extracted executables.
 
 Decky Plugin Template
 ---------------------
@@ -45,4 +46,3 @@ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
 CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
-

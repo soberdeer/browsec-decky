@@ -190,7 +190,29 @@ later.
 
 Headings are for convenience only and do not affect interpretation.
 
-12. Additional Permission
+12. Decky Plugin Store Distribution Permission
+
+Notwithstanding Section 3, the Licensor authorizes the SteamDeckHomebrew
+project, its maintainers, its automated build and testing infrastructure, and
+the official Decky Plugin Store to:
+
+a. clone and cache the Software;
+
+b. build and package the Software from its unmodified source code;
+
+c. make mechanical version-metadata and packaging changes required by the
+   official review, testing, and distribution infrastructure, provided those
+   changes do not alter the Software's functionality; and
+
+d. reproduce and distribute those builds through the official Decky plugin
+   review, testing, and store infrastructure.
+
+This permission does not authorize functional modifications, derivative
+works, commercial use, or redistribution through any other channel. All
+copyright, license, attribution, trademark, and third-party notices must be
+preserved.
+
+13. Additional Permission
 
 For permission to modify, redistribute, integrate, or commercially use the
 Software, contact the Licensor through:
