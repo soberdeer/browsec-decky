@@ -1,6 +1,9 @@
 # Browsec Decky
 
+![Browsec × Decky Loader](assets/header.svg)
+
 An unofficial Browsec VPN for Decky Loader.
+
 
 - complete IPv4 and IPv6 Game Mode traffic through the VPN
 - official Browsec Premium account authentication and server list
@@ -9,34 +12,7 @@ An unofficial Browsec VPN for Decky Loader.
 
 **Requires Premium account!** It's a dependency Browsec requirement.
 
-## Security model
-
-Decky runs the backend with the `_root` flag because creating the TUN
-interface and routes requires network-administration privileges. The plugin:
-
-- keeps the password only for the duration of the sign-in request;
-- never returns tokens, UUIDs, server IPs, or `xsni` values to the frontend;
-- verifies exact SHA-256 hashes for the official runtime at build time and
-  before every connection;
-- writes generated VPN configuration with mode `0600`;
-- refuses to connect while Browsec Desktop appears to be running;
-- installs an isolated `inet browsec_decky` nftables table before starting the
-  VPN, without modifying any other firewall table;
-- keeps that table active if either tunnel process exits unexpectedly;
-- removes the table after a normal disconnect, plugin unload, uninstall, or
-  backend restart;
-- tears down both subprocess groups when disconnected or unloaded; and
-- verifies that the external IP changed before reporting `Protected`.
-
-The kill switch blocks both IPv4 and IPv6 outside the TUN interface. It permits
-only loopback, DHCP/required IPv6 neighbor discovery, and the selected
-Browsec transport server while active. If a backend crash leaves networking
-blocked, restarting Decky or rebooting removes the transient rule. The
-emergency Desktop Mode command is:
-
-```sh
-sudo nft delete table inet browsec_decky
-```
+Need a version for Desktop Mode? Check out [Browsec Deck](https://github.com/soberdeer/browsec-deck).
 
 ## Build
 
