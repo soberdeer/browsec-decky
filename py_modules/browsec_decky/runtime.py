@@ -70,13 +70,29 @@ class TunnelRuntime:
     def kill_switch_available(self) -> bool:
         return self.kill_switch.available
 
+    @staticmethod
+    async def _run_firewall_operation(
+        operation: Callable[..., None],
+        *arguments: str,
+    ) -> None:
+        """Finish an nftables transaction before honoring cancellation."""
+
+        task = asyncio.create_task(
+            asyncio.to_thread(operation, *arguments)
+        )
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            await task
+            raise
+
     async def enable_kill_switch(self) -> None:
         if self._transport_server is None:
             raise RuntimeErrorSafe(
                 "Connect to a Browsec server before enabling the kill switch"
             )
         try:
-            await asyncio.to_thread(
+            await self._run_firewall_operation(
                 self.kill_switch.enable,
                 self._transport_server.ip,
             )
@@ -85,7 +101,7 @@ class TunnelRuntime:
 
     async def disable_kill_switch(self) -> None:
         try:
-            await asyncio.to_thread(self.kill_switch.disable)
+            await self._run_firewall_operation(self.kill_switch.disable)
         except KillSwitchError as exc:
             raise RuntimeErrorSafe(str(exc)) from exc
 
@@ -303,15 +319,21 @@ class TunnelRuntime:
     ) -> None:
         wait_ready = asyncio.create_task(ready.wait())
         wait_exit = asyncio.create_task(process.wait())
-        done, pending = await asyncio.wait(
-            (wait_ready, wait_exit),
-            timeout=timeout,
-            return_when=asyncio.FIRST_COMPLETED,
-        )
-        for task in pending:
-            task.cancel()
-        if pending:
-            await asyncio.gather(*pending, return_exceptions=True)
+        try:
+            done, _pending = await asyncio.wait(
+                (wait_ready, wait_exit),
+                timeout=timeout,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+        finally:
+            for task in (wait_ready, wait_exit):
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(
+                wait_ready,
+                wait_exit,
+                return_exceptions=True,
+            )
         if wait_ready in done and ready.is_set():
             return
         if wait_exit in done:
@@ -350,7 +372,7 @@ class TunnelRuntime:
                     headers={
                         "Accept": "text/plain",
                         "Cache-Control": "no-cache",
-                        "User-Agent": "Browsec-Decky/0.1.4",
+                        "User-Agent": "Browsec-Decky/0.1.5",
                     },
                 )
                 with opener.open(request, timeout=6) as response:
@@ -458,6 +480,9 @@ class TunnelRuntime:
             await self.on_state("connected", None)
             self._watch_task = asyncio.create_task(self._watch_processes())
             return after_ip
+        except asyncio.CancelledError:
+            await self.stop()
+            raise
         except Exception:
             await self.stop()
             raise

@@ -39,6 +39,7 @@ class BrowsecService:
         self.servers: dict[str, list[VPNServer]] = {}
         self.settings = self._load_settings()
         self.runtime = TunnelRuntime(plugin_dir, runtime_dir, self._runtime_state)
+        self._connect_task: asyncio.Task[Any] | None = None
 
     def _load_settings(self) -> dict[str, Any]:
         raw = self.storage.load()
@@ -150,6 +151,9 @@ class BrowsecService:
                     "email": account_email,
                     "access_token": token,
                     "xray_uuid": xray_uuid,
+                    "kill_switch_enabled": bool(
+                        self.settings.get("kill_switch_enabled", True)
+                    ),
                 }
                 self._save_settings()
                 await self._refresh_locked()
@@ -208,7 +212,17 @@ class BrowsecService:
             return self.public_state()
 
     async def connect(self) -> dict[str, Any]:
+        current_task = asyncio.current_task()
+        if current_task is None:
+            raise RuntimeError("Connect must run inside an asyncio task")
+
         async with self.lock:
+            if (
+                self._connect_task is not None
+                and not self._connect_task.done()
+                and self._connect_task is not current_task
+            ):
+                return self.public_state()
             self.error = None
             try:
                 if not self.logged_in:
@@ -222,29 +236,62 @@ class BrowsecService:
                 xray_uuid = self.settings.get("xray_uuid")
                 if not xray_uuid:
                     raise BrowsecAPIError("The Browsec Xray credential is missing")
-
-                last_error: Exception | None = None
-                for server in candidates[:3]:
-                    try:
-                        await self.runtime.start(
-                            server,
-                            xray_uuid,
-                            include_ipv6=True,
-                            use_kill_switch=bool(
-                                self.settings.get("kill_switch_enabled", True)
-                            ),
-                        )
-                        last_error = None
-                        break
-                    except RuntimeErrorSafe as exc:
-                        last_error = exc
-                if last_error is not None:
-                    raise last_error
             except (BrowsecAPIError, RuntimeErrorSafe) as exc:
                 self.status = "disconnected"
                 self.error = str(exc)
+                await self._emit()
+                return self.public_state()
+
+            use_kill_switch = bool(
+                self.settings.get("kill_switch_enabled", True)
+            )
+            self._connect_task = current_task
+
+        last_error: Exception | None = None
+        cancelled = False
+        try:
+            for server in candidates[:3]:
+                try:
+                    await self.runtime.start(
+                        server,
+                        xray_uuid,
+                        include_ipv6=True,
+                        use_kill_switch=use_kill_switch,
+                    )
+                    last_error = None
+                    break
+                except RuntimeErrorSafe as exc:
+                    last_error = exc
+        except asyncio.CancelledError:
+            cancelled = True
+            try:
+                await self.runtime.stop()
+            except RuntimeErrorSafe as exc:
+                last_error = exc
+        except Exception:
+            last_error = RuntimeErrorSafe(
+                "The VPN connection failed unexpectedly"
+            )
+
+        async with self.lock:
+            if self._connect_task is current_task:
+                self._connect_task = None
+            if cancelled:
+                self.status = "disconnected"
+                self.error = str(last_error) if last_error else None
+            elif last_error is not None:
+                self.status = "disconnected"
+                self.error = str(last_error)
             await self._emit()
             return self.public_state()
+
+    async def _cancel_connection(self) -> None:
+        task = self._connect_task
+        current_task = asyncio.current_task()
+        if task is None or task is current_task or task.done():
+            return
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
 
     async def set_kill_switch(self, enabled: bool) -> dict[str, Any]:
         async with self.lock:
@@ -263,6 +310,7 @@ class BrowsecService:
             return self.public_state()
 
     async def disconnect(self) -> dict[str, Any]:
+        await self._cancel_connection()
         async with self.lock:
             try:
                 await self.runtime.stop()
@@ -274,6 +322,7 @@ class BrowsecService:
             return self.public_state()
 
     async def logout(self) -> dict[str, Any]:
+        await self._cancel_connection()
         async with self.lock:
             kill_switch_enabled = bool(
                 self.settings.get("kill_switch_enabled", True)
@@ -295,5 +344,6 @@ class BrowsecService:
             return self.public_state()
 
     async def shutdown(self) -> None:
+        await self._cancel_connection()
         async with self.lock:
             await self.runtime.stop()

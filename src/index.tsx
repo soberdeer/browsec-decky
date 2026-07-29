@@ -142,6 +142,7 @@ function Content() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(true);
+  const [cancelRequested, setCancelRequested] = useState(false);
 
   const execute = useCallback(
     async (action: () => Promise<PublicState>, clearPassword = false) => {
@@ -170,6 +171,9 @@ function Content() {
       "state_changed",
       (next) => {
         if (active) {
+          if (next.status !== "connecting") {
+            setCancelRequested(false);
+          }
           setState(next);
         }
       },
@@ -250,6 +254,14 @@ function Content() {
 
   const isConnected = state.status === "connected";
   const isTransitioning = state.status === "connecting";
+  const handleTunnelAction = () => {
+    if (isTransitioning) {
+      setCancelRequested(true);
+      execute(disconnect);
+      return;
+    }
+    execute(isConnected ? disconnect : connect);
+  };
   const locationOptions = state.countries.map((country) => ({
     data: country.code,
     label: country.name,
@@ -281,19 +293,22 @@ function Content() {
         <PanelSectionRow>
           <ButtonItem
             disabled={
-              busy ||
-              isTransitioning ||
-              (!isConnected &&
-                (!state.runtimeReady ||
-                  !state.selectedCountry ||
-                  (state.killSwitchEnabled &&
-                    !state.killSwitchAvailable)))
+              isTransitioning
+                ? cancelRequested
+                : busy ||
+                  (!isConnected &&
+                    (!state.runtimeReady ||
+                      !state.selectedCountry ||
+                      (state.killSwitchEnabled &&
+                        !state.killSwitchAvailable)))
             }
             layout="below"
-            onClick={() => execute(isConnected ? disconnect : connect)}
+            onClick={handleTunnelAction}
           >
             {isTransitioning
-              ? "Connecting…"
+              ? cancelRequested
+                ? "Disconnecting…"
+                : "Disconnect"
               : isConnected
                 ? "Disconnect"
                 : "Connect"}

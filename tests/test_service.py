@@ -7,6 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "py_modules"))
 
+from browsec_decky.api import VPNServer
 from browsec_decky.service import BrowsecService
 
 
@@ -61,3 +62,87 @@ class PublicStateTests(unittest.TestCase):
                 emit_state=emit_state,
             )
             self.assertFalse(reloaded.public_state()["killSwitchEnabled"])
+
+    def test_disconnect_cancels_connection_in_progress(self):
+        async def exercise():
+            emitted = []
+
+            async def emit_state(state):
+                emitted.append(state)
+
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                service = BrowsecService(
+                    plugin_dir=root,
+                    settings_path=root / "settings.json",
+                    runtime_dir=root / "runtime",
+                    emit_state=emit_state,
+                )
+
+                class Runtime:
+                    public_ip = None
+                    kill_switch_active = False
+                    kill_switch_available = True
+
+                    def __init__(self):
+                        self.started = asyncio.Event()
+                        self.cancelled = False
+                        self.stop_calls = 0
+                        self.running = False
+
+                    @property
+                    def is_running(self):
+                        return self.running
+
+                    def runtime_status(self):
+                        return True, None
+
+                    async def start(self, *_args, **_kwargs):
+                        self.running = True
+                        await service._runtime_state("connecting", None)
+                        self.started.set()
+                        try:
+                            await asyncio.Event().wait()
+                        except asyncio.CancelledError:
+                            self.cancelled = True
+                            raise
+
+                    async def stop(self):
+                        self.stop_calls += 1
+                        self.running = False
+                        await service._runtime_state("disconnected", None)
+
+                runtime = Runtime()
+                service.runtime = runtime
+                service.settings = {
+                    "email": "deck@example.com",
+                    "access_token": "a" * 32,
+                    "xray_uuid": "cf9b437a-b26d-416a-9400-51e76ec8b0ca",
+                    "selected_country": "nl",
+                    "kill_switch_enabled": True,
+                }
+                service.servers = {
+                    "nl": [
+                        VPNServer(
+                            ip="203.0.113.8",
+                            xsni="example.org",
+                            country_code="nl",
+                            country_name="Netherlands",
+                        )
+                    ]
+                }
+
+                connection = asyncio.create_task(service.connect())
+                await asyncio.wait_for(runtime.started.wait(), timeout=1)
+                state = await asyncio.wait_for(service.disconnect(), timeout=1)
+                await asyncio.wait_for(connection, timeout=1)
+
+                self.assertTrue(runtime.cancelled)
+                self.assertGreaterEqual(runtime.stop_calls, 1)
+                self.assertEqual(state["status"], "disconnected")
+                self.assertIsNone(state["error"])
+                self.assertTrue(
+                    any(item["status"] == "connecting" for item in emitted)
+                )
+
+        asyncio.run(exercise())
