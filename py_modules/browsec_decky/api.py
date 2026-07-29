@@ -292,7 +292,7 @@ class BrowsecAPI:
             try:
                 request = urllib.request.Request(
                     url,
-                    headers={"Accept": "application/json", "User-Agent": "Browsec-Decky/0.1.10"},
+                    headers={"Accept": "application/json", "User-Agent": "Browsec-Decky/1.0.0"},
                 )
                 with urllib.request.urlopen(request, timeout=4) as response:
                     payload = _safe_json(response.read())
