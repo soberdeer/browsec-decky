@@ -1,171 +1,131 @@
-import {
-  afterPatch,
-  findModuleDetailsByExport,
-} from "@decky/ui";
-import {
-  Children,
-  cloneElement,
-  isValidElement,
-  type ReactElement,
-  type ReactNode,
-  useEffect,
-  useState,
-} from "react";
+import { browsecIconPath } from "./BrowsecIcon";
 
-import { BrowsecIcon } from "./BrowsecIcon";
-
-const indicatorKey = "browsec-decky-connected-indicator";
+const indicatorAttribute = "data-browsec-decky-status";
+const svgNamespace = "http://www.w3.org/2000/svg";
 
 let vpnConnected = false;
-const connectionListeners = new Set<(connected: boolean) => void>();
+let syncInstalledIndicator: (() => void) | null = null;
 
 export function setHeaderVpnConnected(connected: boolean) {
-  if (vpnConnected === connected) {
-    return;
-  }
-
   vpnConnected = connected;
-  for (const listener of connectionListeners) {
-    listener(connected);
-  }
+  syncInstalledIndicator?.();
 }
 
-function useVpnConnected() {
-  const [connected, setConnected] = useState(vpnConnected);
+function createIndicator() {
+  const indicator = document.createElement("div");
+  indicator.setAttribute("aria-label", "Browsec VPN connected");
+  indicator.setAttribute(indicatorAttribute, "connected");
+  indicator.setAttribute("role", "status");
+  indicator.setAttribute("title", "Browsec VPN connected");
+  Object.assign(indicator.style, {
+    alignItems: "center",
+    color: "inherit",
+    display: "flex",
+    flexShrink: "0",
+    height: "32px",
+    justifyContent: "center",
+    margin: "0 4px",
+    pointerEvents: "none",
+    width: "28px",
+  });
 
-  useEffect(() => {
-    connectionListeners.add(setConnected);
-    setConnected(vpnConnected);
+  const svg = document.createElementNS(svgNamespace, "svg");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("focusable", "false");
+  svg.setAttribute("height", "22");
+  svg.setAttribute("viewBox", "0 0 50.8 50.8");
+  svg.setAttribute("width", "22");
+  Object.assign(svg.style, {
+    display: "block",
+    flexShrink: "0",
+  });
 
-    return () => {
-      connectionListeners.delete(setConnected);
-    };
-  }, []);
+  const path = document.createElementNS(svgNamespace, "path");
+  path.setAttribute("d", browsecIconPath);
+  path.setAttribute("stroke", "currentColor");
+  path.setAttribute("stroke-linecap", "round");
+  path.setAttribute("stroke-linejoin", "round");
+  path.setAttribute("stroke-width", "3.175");
 
-  return connected;
+  svg.append(path);
+  indicator.append(svg);
+  return indicator;
 }
 
-function ConnectedHeaderIndicator() {
-  const connected = useVpnConnected();
-
-  if (!connected) {
-    return null;
-  }
-
-  return (
-    <div
-      aria-label="Browsec VPN connected"
-      data-browsec-decky-status="connected"
-      role="status"
-      style={{
-        alignItems: "center",
-        color: "inherit",
-        display: "flex",
-        flexShrink: 0,
-        height: "28px",
-        justifyContent: "center",
-        width: "28px",
-      }}
-      title="Browsec VPN connected"
-    >
-      <BrowsecIcon
-        style={{
-          height: "22px",
-          width: "22px",
-        }}
-      />
-    </div>
-  );
-}
-
-function getHeaderRender(value: unknown) {
-  if (typeof value === "function") {
-    return value;
-  }
-
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    "type" in value &&
-    typeof value.type === "function"
-  ) {
-    return value.type;
-  }
-
-  return null;
-}
-
-function isGameModeHeader(value: unknown) {
-  const render = getHeaderRender(value);
-  if (!render) {
-    return false;
-  }
-
-  const source = render.toString();
-  return (
-    source.includes("quickAccessHeader") &&
-    source.includes("BShowHeader")
-  );
-}
-
-interface ElementWithChildren {
-  children?: ReactNode;
-}
-
-function addIndicatorToHeader(
-  _args: unknown[],
-  result: unknown,
-): unknown {
-  if (!isValidElement<ElementWithChildren>(result)) {
-    return result;
-  }
-
-  const header = result.props.children;
-  if (!isValidElement<ElementWithChildren>(header)) {
-    return result;
-  }
-
-  const children = Children.toArray(header.props.children);
-  const indicator = (
-    <ConnectedHeaderIndicator key={indicatorKey} />
-  );
-  const patchedHeader = cloneElement(
-    header as ReactElement<ElementWithChildren>,
-    undefined,
-    [...children, indicator],
-  );
-
-  return cloneElement(
-    result as ReactElement<ElementWithChildren>,
-    undefined,
-    patchedHeader,
-  );
+function removeIndicators() {
+  document
+    .querySelectorAll<HTMLElement>(`[${indicatorAttribute}]`)
+    .forEach((indicator) => indicator.remove());
 }
 
 export function installHeaderIndicator() {
-  const [module, headerExport, exportName] =
-    findModuleDetailsByExport(isGameModeHeader);
+  let indicator: HTMLElement | null = null;
+  let syncing = false;
 
-  if (!module || !headerExport || exportName === undefined) {
-    console.warn(
-      "[Browsec Decky] Could not find the Steam Game Mode header",
-    );
-    return () => {};
-  }
+  const sync = () => {
+    if (syncing) {
+      return;
+    }
 
-  const render = getHeaderRender(headerExport);
-  if (!render) {
-    return () => {};
-  }
+    syncing = true;
+    try {
+      if (!vpnConnected) {
+        removeIndicators();
+        return;
+      }
 
-  const patch =
-    typeof headerExport === "function"
-      ? afterPatch(module, String(exportName), addIndicatorToHeader)
-      : afterPatch(headerExport, "type", addIndicatorToHeader);
+      const header = document.getElementById("header");
+      if (!header) {
+        return;
+      }
+
+      const existing =
+        header.querySelector<HTMLElement>(`[${indicatorAttribute}]`);
+      indicator = existing ?? indicator ?? createIndicator();
+
+      const profile = document.getElementById("header_profile");
+      let profileAnchor = profile;
+      while (
+        profileAnchor &&
+        profileAnchor.parentElement !== header
+      ) {
+        profileAnchor = profileAnchor.parentElement;
+      }
+
+      if (profileAnchor?.parentElement === header) {
+        if (
+          indicator.parentElement !== header ||
+          indicator.nextElementSibling !== profileAnchor
+        ) {
+          header.insertBefore(indicator, profileAnchor);
+        }
+      } else if (indicator.parentElement !== header) {
+        header.append(indicator);
+      }
+    } finally {
+      syncing = false;
+    }
+  };
+
+  syncInstalledIndicator = sync;
+  const observer = new MutationObserver(() => {
+    if (vpnConnected) {
+      sync();
+    }
+  });
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  });
+  sync();
 
   return () => {
-    if (!patch.hasUnpatched) {
-      patch.unpatch();
+    observer.disconnect();
+    if (syncInstalledIndicator === sync) {
+      syncInstalledIndicator = null;
     }
+    indicator?.remove();
+    removeIndicators();
   };
 }
