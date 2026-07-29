@@ -307,7 +307,7 @@ class TunnelRuntime:
             try:
                 request = urllib.request.Request(
                     url,
-                    headers={"Accept": "text/plain", "User-Agent": "Browsec-Decky/0.1.0"},
+                    headers={"Accept": "text/plain", "User-Agent": "Browsec-Decky/0.1.1"},
                 )
                 with urllib.request.urlopen(request, timeout=6) as response:
                     value = response.read(128).decode("ascii", "strict").strip()

@@ -175,7 +175,7 @@ class BrowsecAPI:
             headers = {
                 "Accept": "application/json",
                 "Content-Type": "application/json",
-                "User-Agent": "Browsec-Decky/0.1.0",
+                "User-Agent": "Browsec-Decky/0.1.1",
                 "X-Browsec-Desktop-Version": "1.2.2",
                 "X-Browsec-Desktop-Platform": "linux",
             }
@@ -264,7 +264,7 @@ class BrowsecAPI:
             try:
                 request = urllib.request.Request(
                     url,
-                    headers={"Accept": "application/json", "User-Agent": "Browsec-Decky/0.1.0"},
+                    headers={"Accept": "application/json", "User-Agent": "Browsec-Decky/0.1.1"},
                 )
                 with urllib.request.urlopen(request, timeout=4) as response:
                     payload = _safe_json(response.read())
