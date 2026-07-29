@@ -23,17 +23,18 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          mkdir -p /tmp/decky-cli
           curl --fail --location --proto '=https' --tlsv1.2 \
-            --output /tmp/decky \
+            --output /tmp/decky-cli/decky \
             https://github.com/SteamDeckHomebrew/cli/releases/download/0.0.7/decky-linux-x86_64
           printf '%s  %s\n' \
             '0d0f8c127cd3dba12b75f771c786194ca9f4f771b4787ae24de8b1af45af4294' \
-            '/tmp/decky' \
+            '/tmp/decky-cli/decky' \
             | sha256sum --check -
-          chmod 0755 /tmp/decky
+          chmod 0755 /tmp/decky-cli/decky
 
       - name: Build with the Decky Plugin Database toolchain
-        run: sudo /tmp/decky plugin build -b -o /tmp/decky-output -s directory .
+        run: sudo /tmp/decky-cli/decky plugin build -b -o /tmp/decky-output -s directory .
 
       - name: Verify Store artifact
         shell: bash
