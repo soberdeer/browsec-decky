@@ -87,5 +87,5 @@ jobs:
             "Browsec-Decky-${project_version}.zip" \
             "Browsec-Decky-${project_version}.sha256" \
             --verify-tag \
-            --title "Browsec Decky ${PROJECT_VERSION}" \
+            --title "Browsec Decky ${project_version}" \
             --generate-notes
