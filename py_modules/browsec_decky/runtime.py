@@ -10,11 +10,12 @@ import json
 import os
 import signal
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
-from .api import VPNServer
+from .api import VPNServer, _https_opener
 from .config import build_browbox_config, build_browray_config
 
 
@@ -54,6 +55,7 @@ class TunnelRuntime:
         self._lock_handle: Any = None
         self._stopping = False
         self.public_ip: str | None = None
+        self._public_ip_error: str | None = None
         self._verification_signature: tuple[Any, ...] | None = None
         self._verification_result: tuple[bool, str | None] | None = None
 
@@ -302,28 +304,36 @@ class TunnelRuntime:
         )
 
     @staticmethod
-    def _fetch_public_ip_sync() -> str | None:
+    def _fetch_public_ip_sync() -> tuple[str | None, str | None]:
+        opener = _https_opener()
+        failures: list[str] = []
         for url in PUBLIC_IP_URLS:
+            host = urllib.parse.urlsplit(url).hostname or url
             try:
                 request = urllib.request.Request(
                     url,
-                    headers={"Accept": "text/plain", "User-Agent": "Browsec-Decky/0.1.2"},
+                    headers={
+                        "Accept": "text/plain",
+                        "Cache-Control": "no-cache",
+                        "User-Agent": "Browsec-Decky/0.1.3",
+                    },
                 )
-                with urllib.request.urlopen(request, timeout=6) as response:
+                with opener.open(request, timeout=6) as response:
                     value = response.read(128).decode("ascii", "strict").strip()
-                return str(ipaddress.ip_address(value))
-            except (
-                ValueError,
-                UnicodeError,
-                urllib.error.URLError,
-                TimeoutError,
-                OSError,
-            ):
-                continue
-        return None
+                return str(ipaddress.ip_address(value)), None
+            except (ValueError, UnicodeError) as exc:
+                failures.append(f"{host}: invalid response ({type(exc).__name__})")
+            except (urllib.error.URLError, TimeoutError, OSError) as exc:
+                reason: Any = (
+                    exc.reason if isinstance(exc, urllib.error.URLError) else exc
+                )
+                failures.append(f"{host}: {type(reason).__name__}: {reason}")
+        return None, "; ".join(failures)
 
     async def _fetch_public_ip(self) -> str | None:
-        return await asyncio.to_thread(self._fetch_public_ip_sync)
+        public_ip, error = await asyncio.to_thread(self._fetch_public_ip_sync)
+        self._public_ip_error = error
+        return public_ip
 
     async def start(
         self,
@@ -388,8 +398,14 @@ class TunnelRuntime:
             await asyncio.sleep(1)
             after_ip = await self._fetch_public_ip()
             if after_ip is None:
+                details = (
+                    f" ({self._public_ip_error})"
+                    if self._public_ip_error
+                    else ""
+                )
                 raise RuntimeErrorSafe(
                     "The tunnel started, but its public IP could not be verified"
+                    f"{details}"
                 )
             if before_ip is not None and before_ip == after_ip:
                 raise RuntimeErrorSafe(
