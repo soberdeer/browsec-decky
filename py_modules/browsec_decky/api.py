@@ -118,6 +118,21 @@ def _api_error_message(payload: dict[str, Any], fallback: str) -> str:
     return fallback
 
 
+def _http_error_message(
+    status: int,
+    payload: dict[str, Any],
+    raw: bytes,
+) -> str:
+    friendly = _api_error_message(payload, "")
+    if friendly:
+        return f"Browsec API HTTP {status}: {friendly}"
+    if payload:
+        details = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    else:
+        details = raw.decode("utf-8", "replace").strip() or "<empty response>"
+    return f"Browsec API HTTP {status}: {details[:2048]}"
+
+
 def _https_opener() -> urllib.request.OpenerDirector:
     """Build a verified HTTPS opener that also works inside bundled Decky Python."""
 
@@ -173,9 +188,9 @@ class BrowsecAPI:
             if params:
                 url = f"{url}?{urllib.parse.urlencode(params)}"
             headers = {
-                "Accept": "application/json",
+                "Accept": "application/json, text/plain, */*",
                 "Content-Type": "application/json",
-                "User-Agent": "Browsec-Decky/0.1.1",
+                "User-Agent": "axios/1.16.1",
                 "X-Browsec-Desktop-Version": "1.2.2",
                 "X-Browsec-Desktop-Platform": "linux",
             }
@@ -192,14 +207,17 @@ class BrowsecAPI:
                 with self.opener.open(request, timeout=timeout) as response:
                     return _safe_json(response.read())
             except urllib.error.HTTPError as exc:
-                raw = exc.read()
+                try:
+                    raw = exc.read()
+                finally:
+                    exc.close()
                 try:
                     payload = _safe_json(raw)
                 except BrowsecAPIError:
                     payload = {}
                 if exc.code < 500:
                     raise BrowsecAPIError(
-                        _api_error_message(payload, f"Browsec rejected the request ({exc.code})")
+                        _http_error_message(exc.code, payload, raw)
                     ) from exc
                 last_error = exc
                 failures.append(f"{host}: {type(exc).__name__}: {exc}")
@@ -264,7 +282,7 @@ class BrowsecAPI:
             try:
                 request = urllib.request.Request(
                     url,
-                    headers={"Accept": "application/json", "User-Agent": "Browsec-Decky/0.1.1"},
+                    headers={"Accept": "application/json", "User-Agent": "Browsec-Decky/0.1.2"},
                 )
                 with urllib.request.urlopen(request, timeout=4) as response:
                     payload = _safe_json(response.read())

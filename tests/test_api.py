@@ -1,3 +1,4 @@
+import io
 import sys
 import socket
 import unittest
@@ -9,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "py_modules"))
 
 from browsec_decky.api import (
     BrowsecAPIError,
+    _http_error_message,
     authentication_token,
     normalize_servers,
     validate_account,
@@ -75,6 +77,45 @@ class FailingOpener:
 
 
 class NetworkErrorTests(unittest.TestCase):
+    def test_request_uses_official_desktop_http_identity(self):
+        class InspectingOpener:
+            def open(self, request, timeout):
+                self.request = request
+                raise urllib.error.HTTPError(
+                    request.full_url,
+                    401,
+                    "Unauthorized",
+                    {},
+                    io.BytesIO(b'{"ok":false,"error_code":9}'),
+                )
+
+        opener = InspectingOpener()
+        api = __import__(
+            "browsec_decky.api",
+            fromlist=["BrowsecAPI"],
+        ).BrowsecAPI(
+            api_urls=("https://d5.example/api/",),
+            opener=opener,
+        )
+        with self.assertRaises(BrowsecAPIError):
+            api.login("deck@example.com", "password")
+        self.assertEqual(opener.request.get_header("User-agent"), "axios/1.16.1")
+        self.assertEqual(
+            opener.request.get_header("Accept"),
+            "application/json, text/plain, */*",
+        )
+
+    def test_http_error_includes_numeric_browsec_error_code(self):
+        message = _http_error_message(
+            401,
+            {"ok": False, "error_code": 9},
+            b'{"ok":false,"error_code":9}',
+        )
+        self.assertEqual(
+            message,
+            'Browsec API HTTP 401: {"ok":false,"error_code":9}',
+        )
+
     def test_network_failures_identify_each_host_without_secrets(self):
         opener = FailingOpener()
         api = __import__(
