@@ -17,6 +17,10 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import { BrowsecIcon } from "./BrowsecIcon";
+import {
+  installHeaderIndicator,
+  setHeaderVpnConnected,
+} from "./HeaderIndicator";
 
 type TunnelStatus = "disconnected" | "connecting" | "connected";
 
@@ -365,6 +369,29 @@ function Content() {
 }
 
 export default definePlugin(() => {
+  let active = true;
+  const headerStateListener = addEventListener<[next: PublicState]>(
+    "state_changed",
+    (next) => {
+      if (active) {
+        setHeaderVpnConnected(next.status === "connected");
+      }
+    },
+  );
+  const removeHeaderIndicator = installHeaderIndicator();
+
+  getState()
+    .then((state) => {
+      if (active) {
+        setHeaderVpnConnected(state.status === "connected");
+      }
+    })
+    .catch(() => {
+      if (active) {
+        setHeaderVpnConnected(false);
+      }
+    });
+
   return {
     name: "Browsec Decky",
     titleView: (
@@ -383,6 +410,11 @@ export default definePlugin(() => {
     ),
     content: <Content />,
     icon: <BrowsecIcon />,
-    onDismount() {},
+    onDismount() {
+      active = false;
+      removeEventListener("state_changed", headerStateListener);
+      setHeaderVpnConnected(false);
+      removeHeaderIndicator();
+    },
   };
 });
