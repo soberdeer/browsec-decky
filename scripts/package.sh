@@ -16,7 +16,7 @@ for required in \
   main.py \
   bin/browbox \
   bin/browray \
-  assets/logo.png \
+  assets/logo.svg \
   LICENSE \
   THIRD_PARTY_NOTICES; do
   if [[ ! -e "$PROJECT_DIR/$required" ]]; then

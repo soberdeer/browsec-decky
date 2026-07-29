@@ -15,7 +15,7 @@ import {
 } from "@decky/api";
 import { useCallback, useEffect, useState } from "react";
 
-import logo from "../assets/logo.png";
+import logo from "../assets/logo.svg";
 
 type TunnelStatus = "disconnected" | "connecting" | "connected";
 
@@ -105,8 +105,6 @@ function StatusCard({ state }: { state: PublicState }) {
         alt=""
         src={logo}
         style={{
-          border: `2px solid ${color}`,
-          borderRadius: "8px",
           height: "30px",
           width: "30px",
         }}
@@ -320,7 +318,10 @@ export default definePlugin(() => {
         <img
           alt=""
           src={logo}
-          style={{ borderRadius: "5px", height: "24px", width: "24px" }}
+          style={{
+            height: "24px",
+            width: "24px",
+          }}
         />
         Browsec
       </div>
@@ -330,7 +331,10 @@ export default definePlugin(() => {
       <img
         alt="Browsec"
         src={logo}
-        style={{ borderRadius: "4px", height: "24px", width: "24px" }}
+        style={{
+          height: "24px",
+          width: "24px",
+        }}
       />
     ),
     onDismount() {},

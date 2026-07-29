@@ -5,10 +5,12 @@ from __future__ import annotations
 import ipaddress
 import json
 import re
+import ssl
 import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 
@@ -23,6 +25,10 @@ IP_INFO_URLS = (
     ("https://ipwho.is/?fields=ip,country_code", "country_code"),
 )
 COUNTRY_CODE_RE = re.compile(r"^[a-z]{2,3}$")
+SYSTEM_CA_FILES = (
+    Path("/etc/ssl/certs/ca-certificates.crt"),
+    Path("/etc/ssl/cert.pem"),
+)
 
 COUNTRY_NAMES = {
     "at": "Austria",
@@ -112,11 +118,36 @@ def _api_error_message(payload: dict[str, Any], fallback: str) -> str:
     return fallback
 
 
+def _https_opener() -> urllib.request.OpenerDirector:
+    """Build a verified HTTPS opener that also works inside bundled Decky Python."""
+
+    context: ssl.SSLContext | None = None
+    for certificate_file in SYSTEM_CA_FILES:
+        if certificate_file.is_file():
+            context = ssl.create_default_context(cafile=str(certificate_file))
+            break
+    if context is None:
+        context = ssl.create_default_context()
+    return urllib.request.build_opener(
+        urllib.request.HTTPSHandler(context=context)
+    )
+
+
+def _network_error_description(error: BaseException) -> str:
+    reason: Any = error.reason if isinstance(error, urllib.error.URLError) else error
+    return f"{type(reason).__name__}: {reason}"
+
+
 class BrowsecAPI:
     """Uses the same endpoints and identifying headers as Desktop 1.2.2."""
 
-    def __init__(self, api_urls: tuple[str, ...] = API_URLS) -> None:
+    def __init__(
+        self,
+        api_urls: tuple[str, ...] = API_URLS,
+        opener: urllib.request.OpenerDirector | None = None,
+    ) -> None:
         self.api_urls = api_urls
+        self.opener = opener or _https_opener()
 
     def _request(
         self,
@@ -126,9 +157,10 @@ class BrowsecAPI:
         token: str | None = None,
         data: dict[str, Any] | None = None,
         params: dict[str, str] | None = None,
-        timeout: float = 30,
+        timeout: float = 12,
     ) -> dict[str, Any]:
         last_error: Exception | None = None
+        failures: list[str] = []
         encoded_data = (
             json.dumps(data, separators=(",", ":")).encode("utf-8")
             if data is not None
@@ -137,6 +169,7 @@ class BrowsecAPI:
 
         for base_url in self.api_urls:
             url = urllib.parse.urljoin(base_url, path)
+            host = urllib.parse.urlsplit(base_url).hostname or "Browsec"
             if params:
                 url = f"{url}?{urllib.parse.urlencode(params)}"
             headers = {
@@ -156,19 +189,29 @@ class BrowsecAPI:
                 method=method,
             )
             try:
-                with urllib.request.urlopen(request, timeout=timeout) as response:
+                with self.opener.open(request, timeout=timeout) as response:
                     return _safe_json(response.read())
             except urllib.error.HTTPError as exc:
-                payload = _safe_json(exc.read())
+                raw = exc.read()
+                try:
+                    payload = _safe_json(raw)
+                except BrowsecAPIError:
+                    payload = {}
                 if exc.code < 500:
                     raise BrowsecAPIError(
                         _api_error_message(payload, f"Browsec rejected the request ({exc.code})")
                     ) from exc
                 last_error = exc
+                failures.append(f"{host}: {type(exc).__name__}: {exc}")
             except (urllib.error.URLError, TimeoutError, OSError) as exc:
                 last_error = exc
+                failures.append(f"{host}: {_network_error_description(exc)}")
 
-        raise BrowsecAPIError("Could not reach the Browsec API") from last_error
+        details = "; ".join(failures)
+        message = "Could not reach the Browsec API"
+        if details:
+            message = f"{message} ({details})"
+        raise BrowsecAPIError(message) from last_error
 
     def login(self, email: str, password: str) -> dict[str, Any]:
         email = email.strip()

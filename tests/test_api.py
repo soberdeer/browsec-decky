@@ -1,5 +1,7 @@
 import sys
+import socket
 import unittest
+import urllib.error
 from pathlib import Path
 
 
@@ -64,3 +66,28 @@ class ServerTests(unittest.TestCase):
         self.assertEqual([server.ip for server in servers], ["203.0.113.1", "203.0.113.2"])
         self.assertEqual(servers[0].xsni, "one.example")
         self.assertEqual(servers[0].source_ip_lrc, 1)
+
+
+class FailingOpener:
+    def open(self, _request, timeout):
+        self.timeout = timeout
+        raise urllib.error.URLError(socket.gaierror(-2, "host not found"))
+
+
+class NetworkErrorTests(unittest.TestCase):
+    def test_network_failures_identify_each_host_without_secrets(self):
+        opener = FailingOpener()
+        api = __import__(
+            "browsec_decky.api",
+            fromlist=["BrowsecAPI"],
+        ).BrowsecAPI(
+            api_urls=("https://d5.example/api/", "https://d6.example/api/"),
+            opener=opener,
+        )
+        with self.assertRaises(BrowsecAPIError) as raised:
+            api.login("deck@example.com", "do-not-display")
+        message = str(raised.exception)
+        self.assertIn("d5.example: gaierror:", message)
+        self.assertIn("d6.example: gaierror:", message)
+        self.assertNotIn("do-not-display", message)
+        self.assertEqual(opener.timeout, 12)
