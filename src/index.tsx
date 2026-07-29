@@ -4,7 +4,6 @@ import {
   PanelSection,
   PanelSectionRow,
   TextField,
-  ToggleField,
   staticClasses,
 } from "@decky/ui";
 import {
@@ -40,7 +39,6 @@ interface PublicState {
   selectedCountry: string | null;
   countries: Country[];
   publicIp: string | null;
-  killSwitchEnabled: boolean;
   killSwitchActive: boolean;
   killSwitchAvailable: boolean;
 }
@@ -55,7 +53,6 @@ const emptyState: PublicState = {
   selectedCountry: null,
   countries: [],
   publicIp: null,
-  killSwitchEnabled: true,
   killSwitchActive: false,
   killSwitchAvailable: false,
 };
@@ -66,9 +63,6 @@ const refresh = callable<[], PublicState>("refresh");
 const selectCountry = callable<[country: string], PublicState>("select_country");
 const connect = callable<[], PublicState>("connect");
 const disconnect = callable<[], PublicState>("disconnect");
-const setKillSwitch = callable<[enabled: boolean], PublicState>(
-  "set_kill_switch",
-);
 const logout = callable<[], PublicState>("logout");
 
 function ErrorBox({ message }: { message: string }) {
@@ -303,8 +297,7 @@ function Content() {
                   (!isConnected &&
                     (!state.runtimeReady ||
                       !state.selectedCountry ||
-                      (state.killSwitchEnabled &&
-                        !state.killSwitchAvailable)))
+                      !state.killSwitchAvailable))
             }
             layout="below"
             onClick={handleTunnelAction}
@@ -317,27 +310,6 @@ function Content() {
                 ? "Disconnect"
                 : "Connect"}
           </ButtonItem>
-        </PanelSectionRow>
-        <PanelSectionRow>
-          <ToggleField
-            checked={state.killSwitchEnabled}
-            description={
-              !state.killSwitchAvailable
-                ? "nftables is unavailable on this system"
-                : state.killSwitchActive
-                  ? "Blocking traffic outside the VPN tunnel"
-                  : "Block all traffic if the VPN tunnel drops"
-            }
-            disabled={
-              busy ||
-              isTransitioning ||
-              (!state.killSwitchAvailable && !state.killSwitchEnabled)
-            }
-            label="Kill switch"
-            onChange={(enabled) =>
-              execute(() => setKillSwitch(enabled))
-            }
-          />
         </PanelSectionRow>
       </PanelSection>
       <PanelSection title="Account">

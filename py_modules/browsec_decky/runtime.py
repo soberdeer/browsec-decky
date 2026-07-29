@@ -372,7 +372,7 @@ class TunnelRuntime:
                     headers={
                         "Accept": "text/plain",
                         "Cache-Control": "no-cache",
-                        "User-Agent": "Browsec-Decky/0.1.9",
+                        "User-Agent": "Browsec-Decky/0.1.10",
                     },
                 )
                 with opener.open(request, timeout=6) as response:
@@ -397,7 +397,6 @@ class TunnelRuntime:
         server: VPNServer,
         xray_uuid: str,
         include_ipv6: bool = False,
-        use_kill_switch: bool = True,
     ) -> str:
         if self.is_running:
             if self.public_ip:
@@ -426,12 +425,7 @@ class TunnelRuntime:
             )
             self._transport_server = server
 
-            if use_kill_switch:
-                before_ip = None
-                await self.enable_kill_switch()
-            else:
-                await self.disable_kill_switch()
-                before_ip = await self._fetch_public_ip()
+            await self.enable_kill_switch()
             await self.on_state("connecting", None)
 
             ray_ready = asyncio.Event()
@@ -471,10 +465,6 @@ class TunnelRuntime:
                 raise RuntimeErrorSafe(
                     "The tunnel started, but its public IP could not be verified"
                     f"{details}"
-                )
-            if before_ip is not None and before_ip == after_ip:
-                raise RuntimeErrorSafe(
-                    "The tunnel started, but the public IP did not change"
                 )
             self.public_ip = after_ip
             await self.on_state("connected", None)

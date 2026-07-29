@@ -51,6 +51,7 @@ cp \
   "$stage/"
 
 rm -f -- "$stage/bin/.gitkeep"
+find "$stage" -type f -name '.DS_Store' -delete
 find "$stage" -type d -name __pycache__ -prune -exec rm -rf -- {} +
 find "$stage" -type f -name '*.pyc' -delete
 find "$stage" -type d -exec chmod 0755 {} +

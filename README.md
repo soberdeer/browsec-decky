@@ -8,7 +8,7 @@ An unofficial Browsec VPN for Decky Loader.
 - complete IPv4 and IPv6 Game Mode traffic through the VPN
 - official Browsec Premium account authentication and server list
 - location selection, connect, disconnect, IP verification, and sign-out
-- an nftables kill switch enabled by default
+- a mandatory nftables kill switch for every VPN connection
 
 **Requires Premium account!** It's a dependency Browsec requirement.
 

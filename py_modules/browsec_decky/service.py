@@ -48,12 +48,6 @@ class BrowsecService:
             value = raw.get(key)
             if isinstance(value, str):
                 result[key] = value
-        kill_switch_enabled = raw.get("kill_switch_enabled")
-        result["kill_switch_enabled"] = (
-            kill_switch_enabled
-            if isinstance(kill_switch_enabled, bool)
-            else True
-        )
         return result
 
     def _save_settings(self) -> None:
@@ -66,18 +60,12 @@ class BrowsecService:
                 "access_token",
                 "xray_uuid",
                 "selected_country",
-                "kill_switch_enabled",
             }
         }
         self.storage.save(allowed)
 
     def _clear_expired_session(self) -> None:
-        kill_switch_enabled = bool(
-            self.settings.get("kill_switch_enabled", True)
-        )
-        self.settings = {
-            "kill_switch_enabled": kill_switch_enabled,
-        }
+        self.settings = {}
         self.servers = {}
         self._save_settings()
 
@@ -110,9 +98,6 @@ class BrowsecService:
             "selectedCountry": self.settings.get("selected_country"),
             "countries": countries,
             "publicIp": self.runtime.public_ip,
-            "killSwitchEnabled": bool(
-                self.settings.get("kill_switch_enabled", True)
-            ),
             "killSwitchActive": self.runtime.kill_switch_active,
             "killSwitchAvailable": self.runtime.kill_switch_available,
         }
@@ -165,9 +150,6 @@ class BrowsecService:
                     "email": account_email,
                     "access_token": token,
                     "xray_uuid": xray_uuid,
-                    "kill_switch_enabled": bool(
-                        self.settings.get("kill_switch_enabled", True)
-                    ),
                 }
                 self._save_settings()
                 await self._refresh_locked()
@@ -256,9 +238,6 @@ class BrowsecService:
                 await self._emit()
                 return self.public_state()
 
-            use_kill_switch = bool(
-                self.settings.get("kill_switch_enabled", True)
-            )
             self._connect_task = current_task
 
         last_error: Exception | None = None
@@ -270,7 +249,6 @@ class BrowsecService:
                         server,
                         xray_uuid,
                         include_ipv6=True,
-                        use_kill_switch=use_kill_switch,
                     )
                     last_error = None
                     break
@@ -307,22 +285,6 @@ class BrowsecService:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
 
-    async def set_kill_switch(self, enabled: bool) -> dict[str, Any]:
-        async with self.lock:
-            self.error = None
-            try:
-                if enabled:
-                    if self.runtime.is_running:
-                        await self.runtime.enable_kill_switch()
-                else:
-                    await self.runtime.disable_kill_switch()
-                self.settings["kill_switch_enabled"] = bool(enabled)
-                self._save_settings()
-            except RuntimeErrorSafe as exc:
-                self.error = str(exc)
-            await self._emit()
-            return self.public_state()
-
     async def disconnect(self) -> dict[str, Any]:
         await self._cancel_connection()
         async with self.lock:
@@ -338,19 +300,15 @@ class BrowsecService:
     async def logout(self) -> dict[str, Any]:
         await self._cancel_connection()
         async with self.lock:
-            kill_switch_enabled = bool(
-                self.settings.get("kill_switch_enabled", True)
-            )
             stop_error: str | None = None
             try:
                 await self.runtime.stop()
             except RuntimeErrorSafe as exc:
                 stop_error = str(exc)
             token = self.settings.get("access_token")
-            self.settings = {"kill_switch_enabled": kill_switch_enabled}
+            self.settings = {}
             self.servers = {}
             self.storage.clear()
-            self._save_settings()
             if token:
                 await asyncio.to_thread(self.api.destroy_token, token)
             self.error = stop_error

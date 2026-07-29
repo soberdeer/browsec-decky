@@ -60,7 +60,7 @@ class PublicStateTests(unittest.TestCase):
 
             state = service.public_state()
             self.assertFalse(state["loggedIn"])
-            self.assertFalse(state["killSwitchEnabled"])
+            self.assertNotIn("killSwitchEnabled", state)
             self.assertEqual(
                 state["error"],
                 "Your Browsec session expired. Sign in again.",
@@ -68,6 +68,7 @@ class PublicStateTests(unittest.TestCase):
             saved = settings_path.read_text(encoding="utf-8")
             self.assertNotIn("expired-token-value", saved)
             self.assertNotIn("xray_uuid", saved)
+            self.assertNotIn("kill_switch_enabled", saved)
 
     def test_backend_state_never_exposes_credentials(self):
         async def emit_state(_state):
@@ -92,33 +93,29 @@ class PublicStateTests(unittest.TestCase):
             self.assertNotIn("top-secret-token", serialized)
             self.assertNotIn("cf9b437a", serialized)
             self.assertIn("deck@example.com", serialized)
-            self.assertTrue(state["killSwitchEnabled"])
+            self.assertNotIn("killSwitchEnabled", state)
             self.assertFalse(state["killSwitchActive"])
 
-    def test_kill_switch_is_enabled_by_default_and_can_be_disabled(self):
+    def test_legacy_kill_switch_disable_setting_is_ignored(self):
         async def emit_state(_state):
             return None
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            settings_path = root / "settings.json"
+            settings_path.write_text(
+                '{"kill_switch_enabled":false}',
+                encoding="utf-8",
+            )
             service = BrowsecService(
                 plugin_dir=root,
-                settings_path=root / "settings.json",
+                settings_path=settings_path,
                 runtime_dir=root / "runtime",
                 emit_state=emit_state,
             )
 
-            self.assertTrue(service.public_state()["killSwitchEnabled"])
-            state = asyncio.run(service.set_kill_switch(False))
-            self.assertFalse(state["killSwitchEnabled"])
-
-            reloaded = BrowsecService(
-                plugin_dir=root,
-                settings_path=root / "settings.json",
-                runtime_dir=root / "runtime-2",
-                emit_state=emit_state,
-            )
-            self.assertFalse(reloaded.public_state()["killSwitchEnabled"])
+            self.assertNotIn("kill_switch_enabled", service.settings)
+            self.assertNotIn("killSwitchEnabled", service.public_state())
 
     def test_disconnect_cancels_connection_in_progress(self):
         async def exercise():
@@ -146,6 +143,7 @@ class PublicStateTests(unittest.TestCase):
                         self.cancelled = False
                         self.stop_calls = 0
                         self.running = False
+                        self.start_calls = 0
 
                     @property
                     def is_running(self):
@@ -155,6 +153,7 @@ class PublicStateTests(unittest.TestCase):
                         return True, None
 
                     async def start(self, *_args, **_kwargs):
+                        self.start_calls += 1
                         self.running = True
                         await service._runtime_state("connecting", None)
                         self.started.set()
@@ -176,7 +175,6 @@ class PublicStateTests(unittest.TestCase):
                     "access_token": "a" * 32,
                     "xray_uuid": "cf9b437a-b26d-416a-9400-51e76ec8b0ca",
                     "selected_country": "nl",
-                    "kill_switch_enabled": True,
                 }
                 service.servers = {
                     "nl": [
@@ -196,6 +194,7 @@ class PublicStateTests(unittest.TestCase):
 
                 self.assertTrue(runtime.cancelled)
                 self.assertGreaterEqual(runtime.stop_calls, 1)
+                self.assertEqual(runtime.start_calls, 1)
                 self.assertEqual(state["status"], "disconnected")
                 self.assertIsNone(state["error"])
                 self.assertTrue(
