@@ -17,6 +17,7 @@ from typing import Any, Awaitable, Callable
 
 from .api import VPNServer, _https_opener
 from .config import build_browbox_config, build_browray_config
+from .firewall import KillSwitchError, NftKillSwitch
 
 
 BINARY_HASHES = {
@@ -56,8 +57,42 @@ class TunnelRuntime:
         self._stopping = False
         self.public_ip: str | None = None
         self._public_ip_error: str | None = None
+        self.kill_switch = NftKillSwitch()
+        self._transport_server: VPNServer | None = None
         self._verification_signature: tuple[Any, ...] | None = None
         self._verification_result: tuple[bool, str | None] | None = None
+
+    @property
+    def kill_switch_active(self) -> bool:
+        return self.kill_switch.active
+
+    @property
+    def kill_switch_available(self) -> bool:
+        return self.kill_switch.available
+
+    async def enable_kill_switch(self) -> None:
+        if self._transport_server is None:
+            raise RuntimeErrorSafe(
+                "Connect to a Browsec server before enabling the kill switch"
+            )
+        try:
+            await asyncio.to_thread(
+                self.kill_switch.enable,
+                self._transport_server.ip,
+            )
+        except KillSwitchError as exc:
+            raise RuntimeErrorSafe(str(exc)) from exc
+
+    async def disable_kill_switch(self) -> None:
+        try:
+            await asyncio.to_thread(self.kill_switch.disable)
+        except KillSwitchError as exc:
+            raise RuntimeErrorSafe(str(exc)) from exc
+
+    async def reset_stale_kill_switch(self) -> None:
+        """Restore networking after a Decky/plugin restart."""
+
+        await self.disable_kill_switch()
 
     def runtime_status(self) -> tuple[bool, str | None]:
         if os.name != "posix" or not Path("/proc").is_dir():
@@ -315,7 +350,7 @@ class TunnelRuntime:
                     headers={
                         "Accept": "text/plain",
                         "Cache-Control": "no-cache",
-                        "User-Agent": "Browsec-Decky/0.1.3",
+                        "User-Agent": "Browsec-Decky/0.1.4",
                     },
                 )
                 with opener.open(request, timeout=6) as response:
@@ -340,6 +375,7 @@ class TunnelRuntime:
         server: VPNServer,
         xray_uuid: str,
         include_ipv6: bool = False,
+        use_kill_switch: bool = True,
     ) -> str:
         if self.is_running:
             if self.public_ip:
@@ -357,8 +393,6 @@ class TunnelRuntime:
                 raise RuntimeErrorSafe(
                     "Close Browsec Desktop before connecting Browsec Decky"
                 )
-            before_ip = await self._fetch_public_ip()
-            await self.on_state("connecting", None)
 
             browray_config = self._write_config(
                 "browray-config.json",
@@ -368,6 +402,15 @@ class TunnelRuntime:
                 "browbox-config.json",
                 build_browbox_config(server, include_ipv6),
             )
+            self._transport_server = server
+
+            if use_kill_switch:
+                before_ip = None
+                await self.enable_kill_switch()
+            else:
+                await self.disable_kill_switch()
+                before_ip = await self._fetch_public_ip()
+            await self.on_state("connecting", None)
 
             ray_ready = asyncio.Event()
             self.browray = await self._spawn(
@@ -438,10 +481,18 @@ class TunnelRuntime:
         try:
             await asyncio.wait(waits, return_when=asyncio.FIRST_COMPLETED)
             if not self._stopping:
-                await self.stop()
+                await self.stop(
+                    release_kill_switch=False,
+                    emit_state=False,
+                )
+                protection = (
+                    " Kill switch is blocking traffic."
+                    if self.kill_switch_active
+                    else ""
+                )
                 await self.on_state(
                     "disconnected",
-                    "The VPN process exited unexpectedly",
+                    f"The VPN process exited unexpectedly.{protection}",
                 )
         finally:
             for task in waits:
@@ -463,7 +514,12 @@ class TunnelRuntime:
                 pass
             await process.wait()
 
-    async def stop(self) -> None:
+    async def stop(
+        self,
+        *,
+        release_kill_switch: bool = True,
+        emit_state: bool = True,
+    ) -> None:
         if self._stopping:
             return
         self._stopping = True
@@ -489,6 +545,10 @@ class TunnelRuntime:
                 except FileNotFoundError:
                     pass
             self._release_lock()
-            await self.on_state("disconnected", None)
+            if release_kill_switch:
+                await self.disable_kill_switch()
+                self._transport_server = None
+            if emit_state:
+                await self.on_state("disconnected", None)
         finally:
             self._stopping = False

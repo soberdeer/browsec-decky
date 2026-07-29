@@ -66,6 +66,9 @@ class Plugin:
     async def disconnect(self) -> dict:
         return await self.service.disconnect()
 
+    async def set_kill_switch(self, enabled: bool) -> dict:
+        return await self.service.set_kill_switch(enabled)
+
     async def logout(self) -> dict:
         return await self.service.logout()
 

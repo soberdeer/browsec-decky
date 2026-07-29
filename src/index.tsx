@@ -4,6 +4,7 @@ import {
   PanelSection,
   PanelSectionRow,
   TextField,
+  ToggleField,
   staticClasses,
 } from "@decky/ui";
 import {
@@ -15,7 +16,7 @@ import {
 } from "@decky/api";
 import { useCallback, useEffect, useState } from "react";
 
-import logo from "../assets/logo.svg";
+import { BrowsecIcon } from "./BrowsecIcon";
 
 type TunnelStatus = "disconnected" | "connecting" | "connected";
 
@@ -35,6 +36,9 @@ interface PublicState {
   selectedCountry: string | null;
   countries: Country[];
   publicIp: string | null;
+  killSwitchEnabled: boolean;
+  killSwitchActive: boolean;
+  killSwitchAvailable: boolean;
 }
 
 const emptyState: PublicState = {
@@ -47,6 +51,9 @@ const emptyState: PublicState = {
   selectedCountry: null,
   countries: [],
   publicIp: null,
+  killSwitchEnabled: true,
+  killSwitchActive: false,
+  killSwitchAvailable: false,
 };
 
 const getState = callable<[], PublicState>("get_state");
@@ -55,6 +62,9 @@ const refresh = callable<[], PublicState>("refresh");
 const selectCountry = callable<[country: string], PublicState>("select_country");
 const connect = callable<[], PublicState>("connect");
 const disconnect = callable<[], PublicState>("disconnect");
+const setKillSwitch = callable<[enabled: boolean], PublicState>(
+  "set_kill_switch",
+);
 const logout = callable<[], PublicState>("logout");
 
 function ErrorBox({ message }: { message: string }) {
@@ -76,18 +86,27 @@ function ErrorBox({ message }: { message: string }) {
 }
 
 function StatusCard({ state }: { state: PublicState }) {
-  const color =
-    state.status === "connected"
+  const isBlocked =
+    state.killSwitchActive && state.status === "disconnected";
+  const color = isBlocked
+    ? "#f7c948"
+    : state.status === "connected"
       ? "#60d394"
       : state.status === "connecting"
         ? "#f7c948"
         : "#aeb6c2";
-  const label =
-    state.status === "connected"
+  const label = isBlocked
+    ? "Network blocked"
+    : state.status === "connected"
       ? "Protected"
       : state.status === "connecting"
         ? "Connecting…"
         : "Not connected";
+  const detail = isBlocked
+    ? "Kill switch is preventing traffic leaks"
+    : state.publicIp
+      ? `VPN IP: ${state.publicIp}`
+      : "All Game Mode traffic";
 
   return (
     <div
@@ -101,10 +120,9 @@ function StatusCard({ state }: { state: PublicState }) {
         width: "100%",
       }}
     >
-      <img
-        alt=""
-        src={logo}
+      <BrowsecIcon
         style={{
+          color: "#dcdedf",
           height: "30px",
           width: "30px",
         }}
@@ -112,7 +130,7 @@ function StatusCard({ state }: { state: PublicState }) {
       <div>
         <div style={{ color, fontSize: "16px", fontWeight: 600 }}>{label}</div>
         <div style={{ color: "#c6d0dc", fontSize: "12px", marginTop: "2px" }}>
-          {state.publicIp ? `VPN IP: ${state.publicIp}` : "All Game Mode traffic"}
+          {detail}
         </div>
       </div>
     </div>
@@ -266,7 +284,10 @@ function Content() {
               busy ||
               isTransitioning ||
               (!isConnected &&
-                (!state.runtimeReady || !state.selectedCountry))
+                (!state.runtimeReady ||
+                  !state.selectedCountry ||
+                  (state.killSwitchEnabled &&
+                    !state.killSwitchAvailable)))
             }
             layout="below"
             onClick={() => execute(isConnected ? disconnect : connect)}
@@ -277,6 +298,27 @@ function Content() {
                 ? "Disconnect"
                 : "Connect"}
           </ButtonItem>
+        </PanelSectionRow>
+        <PanelSectionRow>
+          <ToggleField
+            checked={state.killSwitchEnabled}
+            description={
+              !state.killSwitchAvailable
+                ? "nftables is unavailable on this system"
+                : state.killSwitchActive
+                  ? "Blocking traffic outside the VPN tunnel"
+                  : "Block all traffic if the VPN tunnel drops"
+            }
+            disabled={
+              busy ||
+              isTransitioning ||
+              (!state.killSwitchAvailable && !state.killSwitchEnabled)
+            }
+            label="Kill switch"
+            onChange={(enabled) =>
+              execute(() => setKillSwitch(enabled))
+            }
+          />
         </PanelSectionRow>
       </PanelSection>
       <PanelSection title="Account">
@@ -315,9 +357,7 @@ export default definePlugin(() => {
         className={staticClasses.Title}
         style={{ alignItems: "center", display: "flex", gap: "8px" }}
       >
-        <img
-          alt=""
-          src={logo}
+        <BrowsecIcon
           style={{
             height: "24px",
             width: "24px",
@@ -327,16 +367,7 @@ export default definePlugin(() => {
       </div>
     ),
     content: <Content />,
-    icon: (
-      <img
-        alt="Browsec"
-        src={logo}
-        style={{
-          height: "24px",
-          width: "24px",
-        }}
-      />
-    ),
+    icon: <BrowsecIcon />,
     onDismount() {},
   };
 });

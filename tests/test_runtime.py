@@ -1,5 +1,7 @@
+import asyncio
 import socket
 import sys
+import tempfile
 import unittest
 import urllib.error
 from pathlib import Path
@@ -8,6 +10,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "py_modules"))
 
+from browsec_decky.api import VPNServer
 from browsec_decky.runtime import TunnelRuntime
 
 
@@ -67,6 +70,77 @@ class PublicIPTests(unittest.TestCase):
         self.assertIn("checkip.amazonaws.com: gaierror:", error or "")
         self.assertIn("api.ipify.org: gaierror:", error or "")
         self.assertIn("icanhazip.com: gaierror:", error or "")
+
+
+class KillSwitchLifecycleTests(unittest.TestCase):
+    def test_unexpected_stop_preserves_switch_but_normal_stop_removes_it(self):
+        class Switch:
+            available = True
+            active = True
+
+            def __init__(self):
+                self.disable_calls = 0
+
+            def disable(self):
+                self.disable_calls += 1
+                self.active = False
+
+        async def exercise():
+            async def on_state(_status, _error):
+                return None
+
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                runtime = TunnelRuntime(root, root / "runtime", on_state)
+                switch = Switch()
+                runtime.kill_switch = switch
+
+                await runtime.stop(
+                    release_kill_switch=False,
+                    emit_state=False,
+                )
+                self.assertTrue(switch.active)
+                self.assertEqual(switch.disable_calls, 0)
+
+                await runtime.stop()
+                self.assertFalse(switch.active)
+                self.assertEqual(switch.disable_calls, 1)
+
+        asyncio.run(exercise())
+
+    def test_live_enable_allows_only_the_current_transport_server(self):
+        class Switch:
+            available = True
+            active = False
+
+            def __init__(self):
+                self.server = None
+
+            def enable(self, server):
+                self.server = server
+                self.active = True
+
+        async def exercise():
+            async def on_state(_status, _error):
+                return None
+
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                runtime = TunnelRuntime(root, root / "runtime", on_state)
+                switch = Switch()
+                runtime.kill_switch = switch
+                runtime._transport_server = VPNServer(
+                    ip="203.0.113.8",
+                    xsni="example.org",
+                    country_code="nl",
+                    country_name="Netherlands",
+                )
+
+                await runtime.enable_kill_switch()
+                self.assertTrue(switch.active)
+                self.assertEqual(switch.server, "203.0.113.8")
+
+        asyncio.run(exercise())
 
 
 if __name__ == "__main__":

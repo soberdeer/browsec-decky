@@ -5,6 +5,7 @@ An unofficial Browsec VPN for Decky Loader.
 - complete IPv4 and IPv6 Game Mode traffic through the VPN
 - official Browsec Premium account authentication and server list
 - location selection, connect, disconnect, IP verification, and sign-out
+- an nftables kill switch enabled by default
 
 **Requires Premium account!** It's a dependency Browsec requirement.
 
@@ -19,11 +20,23 @@ interface and routes requires network-administration privileges. The plugin:
   before every connection;
 - writes generated VPN configuration with mode `0600`;
 - refuses to connect while Browsec Desktop appears to be running;
+- installs an isolated `inet browsec_decky` nftables table before starting the
+  VPN, without modifying any other firewall table;
+- keeps that table active if either tunnel process exits unexpectedly;
+- removes the table after a normal disconnect, plugin unload, uninstall, or
+  backend restart;
 - tears down both subprocess groups when disconnected or unloaded; and
 - verifies that the external IP changed before reporting `Protected`.
 
-There is no kill switch yet. A tunnel process that fails unexpectedly can
-restore ordinary network routing.
+The kill switch blocks both IPv4 and IPv6 outside the TUN interface. It permits
+only loopback, DHCP/required IPv6 neighbor discovery, and the selected
+Browsec transport server while active. If a backend crash leaves networking
+blocked, restarting Decky or rebooting removes the transient rule. The
+emergency Desktop Mode command is:
+
+```sh
+sudo nft delete table inet browsec_decky
+```
 
 ## Build
 
